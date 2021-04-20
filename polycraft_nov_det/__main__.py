@@ -1,4 +1,4 @@
-from polycraft_nov_det.saliency import test
+from polycraft_nov_det.saliency import plot_sample_reconstructions
 
 
-test()
+plot_sample_reconstructions()

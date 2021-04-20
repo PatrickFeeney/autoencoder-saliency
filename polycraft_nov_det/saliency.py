@@ -7,7 +7,7 @@ from polycraft_nov_det.data import torch_mnist
 from polycraft_nov_det.models.lsa.LSA_mnist_no_est import load_model
 
 
-def test():
+def plot_sample_reconstructions():
     # define constants
     batch_size = 5
     loss_func = nn.MSELoss()
@@ -40,6 +40,24 @@ def test():
             break
 
 
+def bin_normed(data):
+    bin_vals = [0, .25, .5, .75, 1]
+    for i in range(1, len(bin_vals)):
+        in_bin = np.logical_and(bin_vals[i - 1] < data, data <= bin_vals[i])
+        data[in_bin] = bin_vals[i]
+    return data
+
+
+def top_k(data, k=10):
+    top_k = np.zeros_like(data)
+    for i in range(data.shape[0]):
+        ind_tuple = np.unravel_index(np.argsort(data[i], axis=None), data[i].shape)
+        top_ind_tuple = tuple([ind[-k:] for ind in ind_tuple])
+        top_ind_tuple = (np.asarray([i] * k),) + top_ind_tuple
+        top_k[top_ind_tuple] = 1
+    return top_k
+
+
 def plot_reconstruction(images, r_images, saliency):
     # set number of images for plot
     num_images = 5
@@ -57,15 +75,6 @@ def plot_reconstruction(images, r_images, saliency):
     r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
     # compute where reconstruction greater than saliency
     dif = saliency - r_error
-
-    # scatter plot of r_error vs saliency
-    print(np.cov(np.vstack((r_error.flatten(), saliency.flatten()))))
-    plt.scatter(r_error.flatten(), saliency.flatten(), c="#0000ff10")
-    plt.xlabel("Reconstruction Error")
-    plt.ylabel("Saliency Abs Value")
-    plt.show()
-    # TODO test for correlation between saliency and error maps?
-
     # plot the image, reconstruction, and saliency
     titles = ["Input", "Reconstruction", "Saliency", "R. Error", "Dif"]
     num_plots = len(titles)
