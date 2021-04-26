@@ -1,4 +1,4 @@
-from polycraft_nov_det.saliency import plot_sample_reconstructions
+from polycraft_nov_det.saliency import plot_top_k
 
 
-plot_sample_reconstructions()
+plot_top_k()

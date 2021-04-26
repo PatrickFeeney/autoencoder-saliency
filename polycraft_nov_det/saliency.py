@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.special import comb
 import torch
 import torch.nn as nn
 
@@ -38,6 +39,79 @@ def plot_sample_reconstructions():
             plot_reconstruction(data, r_data, saliency)
             plt.show()
             break
+
+
+def calc_top_k(k=10):
+    # define constants
+    batch_size = 5
+    loss_func = nn.MSELoss()
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    # construct datasets
+    _, valid_non_novel, _ = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, valid_novel, _ = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    # construct model
+    model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
+    model = load_model(model_path)
+    model.to(device)
+    model.eval()
+    # eval model
+    for is_novel in [False, True]:
+        top_k_agreement = np.asarray([])
+        # choose data loader
+        if not is_novel:
+            data_loader = valid_non_novel
+        else:
+            data_loader = valid_novel
+        # generate data
+        for data, target in data_loader:
+            data = data.to(device)
+            data.requires_grad_()
+            r_data, embedding = model(data)
+            batch_loss = loss_func(data, r_data)
+            batch_loss.backward()
+            saliency = data.grad.data
+            # remove grad from tensors for numpy conversion
+            data = data.detach().cpu()
+            r_data = r_data.detach().cpu()
+            saliency = saliency.detach().cpu()
+            # regularize the saliency map
+            saliency = torch.abs(saliency)
+            saliency = saliency / torch.amax(saliency, (2, 3), keepdim=True)
+            # regularized compute squared error
+            r_error = torch.square(r_data - data)
+            r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
+            # calc agreement between top k
+            top_k_dif = np.sum(np.abs(top_k(saliency, k) - top_k(r_error, k)), axis=(1, 2, 3))
+            top_k_dif /= 2
+            top_k_agreement = np.hstack((top_k_agreement, k - top_k_dif))
+        # save top k results
+        fname = "novel_top_%i.npy" % (k,) if is_novel else "non_novel_top_%i.npy" % (k,)
+        np.save(fname, top_k_agreement)
+
+
+def plot_top_k(k=10):
+    novel_top_k = np.load("novel_top_%i.npy" % (k,))
+    non_novel_top_k = np.load("non_novel_top_%i.npy" % (k,))
+    labels = ["novel", "non-novel"]
+    fig, ax = plt.subplots()
+    ax.hist([novel_top_k, non_novel_top_k],
+            bins=np.arange(-.5, k + 1),
+            density=True,
+            label=labels)
+    ax.set_xticks(np.arange(0, k + 1))
+    ax.set_xlabel("Top-%i Agreement" % (k,))
+    ax.set_ylabel("Frequency Across Validation Set")
+    ax.set_title("Similarity Between Saliency Map and Reconstruction Error")
+    ax.legend()
+    plt.show()
+
+
+def top_k_random_dist(k=10):
+    n = 28**2
+    dist = np.array([])
+    for i in range(k, -1, -1):
+        dist = np.hstack((np.array([comb(k, i) / comb(n, i) - dist.sum()]), dist))
+    return dist
 
 
 def bin_normed(data):
