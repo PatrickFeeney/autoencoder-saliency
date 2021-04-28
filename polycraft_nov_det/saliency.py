@@ -217,10 +217,8 @@ def plot_reconstruction(images, r_images, saliency):
     # regularized compute squared error
     r_error = torch.square(r_images - images)
     r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
-    # compute where reconstruction greater than saliency
-    dif = saliency - r_error
     # plot the image, reconstruction, and saliency
-    titles = ["Input", "Reconstruction", "Saliency", "R. Error", "Dif"]
+    titles = ["Input", "Reconstruction", "Saliency", "Square Saliency", "R. Error"]
     num_plots = len(titles)
     fig, ax = plt.subplots(nrows=num_plots, ncols=num_images)
     for i, title in enumerate(titles):
@@ -230,13 +228,10 @@ def plot_reconstruction(images, r_images, saliency):
         "vmin": 0,
         "vmax": 1,
     }
-    image_sets = [images, r_images, saliency, r_error, dif]
+    image_sets = [images, r_images, saliency, saliency**2, r_error]
     for i in range(num_images):
         for j, image_set in enumerate(image_sets):
-            if j < len(image_sets) - 1:
-                ax[j][i].imshow(image_set[i, 0], **imshow_kwargs)
-            else:
-                ax[j][i].imshow(image_set[i, 0], cmap="RdBu", vmin=-1, vmax=1)
+            ax[j][i].imshow(image_set[i, 0], **imshow_kwargs)
     # disable tick marks
     for axis in ax.flat:
         axis.set_xticks([])
