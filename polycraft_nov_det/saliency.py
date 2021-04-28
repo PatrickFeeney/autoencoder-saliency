@@ -89,6 +89,57 @@ def calc_top_k(k=10):
         np.save(fname, top_k_agreement)
 
 
+def calc_mse(square_saliency=False):
+    # define constants
+    batch_size = 5
+    loss_func = nn.MSELoss()
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    # construct datasets
+    _, valid_non_novel, _ = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, valid_novel, _ = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    # construct model
+    model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
+    model = load_model(model_path)
+    model.to(device)
+    model.eval()
+    # eval model
+    for is_novel in [False, True]:
+        mse = np.asarray([])
+        # choose data loader
+        if not is_novel:
+            data_loader = valid_non_novel
+        else:
+            data_loader = valid_novel
+        # generate data
+        for data, target in data_loader:
+            data = data.to(device)
+            data.requires_grad_()
+            r_data, embedding = model(data)
+            batch_loss = loss_func(data, r_data)
+            batch_loss.backward()
+            saliency = data.grad.data
+            # remove grad from tensors for numpy conversion
+            data = data.detach().cpu()
+            r_data = r_data.detach().cpu()
+            saliency = saliency.detach().cpu()
+            # regularize the saliency map
+            saliency = torch.abs(saliency)
+            saliency = saliency / torch.amax(saliency, (2, 3), keepdim=True)
+            if square_saliency:
+                saliency = torch.square(saliency)
+            # regularized compute squared error
+            r_error = torch.square(r_data - data)
+            r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
+            # calc agreement between top k
+            mse_batch = np.square(saliency - r_error).mean(axis=(1, 2, 3))
+            mse = np.hstack((mse, mse_batch))
+        # save top k results
+        fname = "novel_mse.npy" if is_novel else "non_novel_mse.npy"
+        if square_saliency:
+            fname = "sqr_" + fname
+        np.save(fname, mse)
+
+
 def plot_top_k(k=10):
     novel_top_k = np.load("novel_top_%i.npy" % (k,))
     non_novel_top_k = np.load("non_novel_top_%i.npy" % (k,))
@@ -103,6 +154,25 @@ def plot_top_k(k=10):
     ax.set_ylabel("Frequency Across Validation Set")
     ax.set_title("Similarity Between Saliency Map and Reconstruction Error")
     ax.legend()
+    plt.show()
+
+
+def plot_mse(square_saliency=False):
+    prefix = "sqr_" if square_saliency else ""
+    novel_mse = np.load(prefix + "novel_mse.npy")
+    non_novel_mse = np.load(prefix + "non_novel_mse.npy")
+    fig, ax = plt.subplots()
+    ax.violinplot([novel_mse, non_novel_mse],
+                  showmedians=True,
+                  vert=False)
+    ax.set_xlabel("Mean Squared Error")
+    ax.set_ylabel("Dataset")
+    ax.set_yticks([1, 2])
+    ax.set_yticklabels(["Novel", "Non-Novel"])
+    if square_saliency:
+        ax.set_title("MSE Between Squared Saliency and Reconstruction Error")
+    else:
+        ax.set_title("MSE Between Saliency and Reconstruction Error")
     plt.show()
 
 

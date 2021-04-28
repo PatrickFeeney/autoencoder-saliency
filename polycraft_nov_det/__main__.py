@@ -1,4 +1,5 @@
-from polycraft_nov_det.saliency import plot_top_k
+from polycraft_nov_det.saliency import plot_mse
 
 
-plot_top_k()
+plot_mse()
+plot_mse(True)
