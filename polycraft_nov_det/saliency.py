@@ -14,8 +14,8 @@ def plot_sample_reconstructions():
     loss_func = nn.MSELoss()
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     # construct datasets
-    _, valid_non_novel, _ = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
-    _, valid_novel, _ = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    _, _, test_non_novel = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, _, test_novel = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
     # construct model
     model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
     model = load_model(model_path)
@@ -25,9 +25,9 @@ def plot_sample_reconstructions():
     for is_novel in [False, True]:
         # choose data loader
         if not is_novel:
-            data_loader = valid_non_novel
+            data_loader = test_non_novel
         else:
-            data_loader = valid_novel
+            data_loader = test_novel
         # generate figures
         for data, target in data_loader:
             data = data.to(device)
@@ -47,8 +47,8 @@ def calc_top_k(k=10):
     loss_func = nn.MSELoss()
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     # construct datasets
-    _, valid_non_novel, _ = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
-    _, valid_novel, _ = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    _, _, test_non_novel = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, _, test_novel = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
     # construct model
     model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
     model = load_model(model_path)
@@ -59,9 +59,9 @@ def calc_top_k(k=10):
         top_k_agreement = np.asarray([])
         # choose data loader
         if not is_novel:
-            data_loader = valid_non_novel
+            data_loader = test_non_novel
         else:
-            data_loader = valid_novel
+            data_loader = test_novel
         # generate data
         for data, target in data_loader:
             data = data.to(device)
@@ -95,8 +95,8 @@ def calc_mse(square_saliency=False):
     loss_func = nn.MSELoss()
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     # construct datasets
-    _, valid_non_novel, _ = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
-    _, valid_novel, _ = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    _, _, test_non_novel = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, _, test_novel = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
     # construct model
     model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
     model = load_model(model_path)
@@ -107,9 +107,9 @@ def calc_mse(square_saliency=False):
         mse = np.asarray([])
         # choose data loader
         if not is_novel:
-            data_loader = valid_non_novel
+            data_loader = test_non_novel
         else:
-            data_loader = valid_novel
+            data_loader = test_novel
         # generate data
         for data, target in data_loader:
             data = data.to(device)
@@ -151,7 +151,7 @@ def plot_top_k(k=10):
             label=labels)
     ax.set_xticks(np.arange(0, k + 1))
     ax.set_xlabel("Top-%i Agreement" % (k,))
-    ax.set_ylabel("Frequency Across Validation Set")
+    ax.set_ylabel("Frequency Across Test Set")
     ax.set_title("Similarity Between Saliency Map and Reconstruction Error")
     ax.legend()
     plt.show()
