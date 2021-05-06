@@ -1,6 +1,8 @@
-from polycraft_nov_det.saliency import plot_mse, plot_sample_reconstructions
+import polycraft_nov_det.saliency as saliency
 
 
-plot_sample_reconstructions()
-plot_mse()
-plot_mse(True)
+for k in [1, 3, 5, 10]:
+    saliency.plot_top_k(k)
+saliency.plot_mse()
+saliency.plot_mse(True)
+saliency.plot_sample_reconstructions()
