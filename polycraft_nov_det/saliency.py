@@ -36,7 +36,7 @@ def plot_sample_reconstructions():
             batch_loss = loss_func(data, r_data)
             batch_loss.backward()
             saliency = data.grad.data
-            plot_reconstruction(data, r_data, saliency)
+            plot_reconstruction(data, r_data, saliency, is_novel)
             plt.show()
             break
 
@@ -143,7 +143,7 @@ def calc_mse(square_saliency=False):
 def plot_top_k(k=10):
     novel_top_k = np.load("novel_top_%i.npy" % (k,))
     non_novel_top_k = np.load("non_novel_top_%i.npy" % (k,))
-    labels = ["novel", "non-novel"]
+    labels = ["Novel", "Normal"]
     fig, ax = plt.subplots()
     ax.hist([novel_top_k, non_novel_top_k],
             bins=np.arange(-.5, k + 1),
@@ -152,7 +152,6 @@ def plot_top_k(k=10):
     ax.set_xticks(np.arange(0, k + 1))
     ax.set_xlabel("Top-%i Agreement" % (k,))
     ax.set_ylabel("Frequency Across Test Set")
-    ax.set_title("Similarity Between Saliency Map and Reconstruction Error")
     ax.legend()
     plt.show()
 
@@ -166,9 +165,10 @@ def plot_mse(square_saliency=False):
                   showmedians=True,
                   vert=False)
     ax.set_xlabel("Mean Squared Error")
+    ax.set_xlim(0, .09)
     ax.set_ylabel("Dataset")
     ax.set_yticks([1, 2])
-    ax.set_yticklabels(["Novel", "Non-Novel"])
+    ax.set_yticklabels(["Novel", "Normal"])
     if square_saliency:
         ax.set_title("MSE Between Squared Saliency and Reconstruction Error")
     else:
@@ -202,7 +202,7 @@ def top_k(data, k=10):
     return top_k
 
 
-def plot_reconstruction(images, r_images, saliency):
+def plot_reconstruction(images, r_images, saliency, is_novel):
     # set number of images for plot
     num_images = 5
     if images.shape[0] < num_images:
@@ -218,9 +218,14 @@ def plot_reconstruction(images, r_images, saliency):
     r_error = torch.square(r_images - images)
     r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
     # plot the image, reconstruction, and saliency
-    titles = ["Input", "Reconstruction", "Saliency", "Square Saliency", "R. Error"]
+    titles = ["", "Reconstruction", "Saliency", "Square Saliency", "R. Error"]
+    if is_novel:
+        titles[0] = "Novel Input"
+    else:
+        titles[0] = "Normal Input"
     num_plots = len(titles)
-    fig, ax = plt.subplots(nrows=num_plots, ncols=num_images)
+    figsize = (2 * num_plots, 2 * num_images)
+    fig, ax = plt.subplots(nrows=num_plots, ncols=num_images, figsize=figsize)
     for i, title in enumerate(titles):
         ax[i][num_images // 2].set_title(title)
     imshow_kwargs = {
