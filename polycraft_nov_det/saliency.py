@@ -21,6 +21,10 @@ def plot_sample_reconstructions():
     model = load_model(model_path)
     model.to(device)
     model.eval()
+    # construct plot data variables
+    plot_data = torch.tensor([])
+    plot_r_data = torch.tensor([])
+    plot_saliency = torch.tensor([])
     # eval model
     for is_novel in [False, True]:
         # choose data loader
@@ -29,16 +33,23 @@ def plot_sample_reconstructions():
         else:
             data_loader = test_novel
         # generate figures
-        for data, target in data_loader:
-            data = data.to(device)
-            data.requires_grad_()
-            r_data, embedding = model(data)
-            batch_loss = loss_func(data, r_data)
-            batch_loss.backward()
-            saliency = data.grad.data
-            plot_reconstruction(data, r_data, saliency, is_novel)
-            plt.show()
-            break
+        data, target = next(iter(data_loader))
+        data = data.to(device)
+        data.requires_grad_()
+        r_data, embedding = model(data)
+        batch_loss = loss_func(data, r_data)
+        batch_loss.backward()
+        saliency = data.grad.data
+        # select examples by set
+        if not is_novel:
+            index = 2
+        else:
+            index = 2
+        plot_data = torch.cat((plot_data, data[index, None]))
+        plot_r_data = torch.cat((plot_r_data, r_data[index, None]))
+        plot_saliency = torch.cat((plot_saliency, saliency[index, None]))
+    plot_reconstruction(plot_data, plot_r_data, plot_saliency)
+    plt.savefig("figures/maps.pdf", bbox_inches='tight', pad_inches=0)
 
 
 def calc_top_k(k=10):
@@ -202,15 +213,11 @@ def top_k(data, k=10):
     return top_k
 
 
-def plot_reconstruction(images, r_images, saliency, is_novel):
-    # set number of images for plot
-    num_images = 5
-    if images.shape[0] < num_images:
-        num_images = images.shape[0]
+def plot_reconstruction(images, r_images, saliency):
     # remove grad from tensors for numpy conversion
-    images = images.detach().cpu()[:num_images]
-    r_images = r_images.detach().cpu()[:num_images]
-    saliency = saliency.detach().cpu()[:num_images]
+    images = images.detach().cpu()
+    r_images = r_images.detach().cpu()
+    saliency = saliency.detach().cpu()
     # regularize the saliency map
     saliency = torch.abs(saliency)
     saliency = saliency / torch.amax(saliency, (2, 3), keepdim=True)
@@ -218,16 +225,15 @@ def plot_reconstruction(images, r_images, saliency, is_novel):
     r_error = torch.square(r_images - images)
     r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
     # plot the image, reconstruction, and saliency
-    titles = ["", "Reconstruction", "Saliency", "Square Saliency", "R. Error"]
-    if is_novel:
-        titles[0] = "Novel Input"
-    else:
-        titles[0] = "Normal Input"
+    titles = ["Input", "Reconstruction", "Saliency Map", "Square Saliency", "Reconstruction Error"]
+    num_images = 2
     num_plots = len(titles)
     figsize = (2 * num_plots, 2 * num_images)
-    fig, ax = plt.subplots(nrows=num_plots, ncols=num_images, figsize=figsize)
+    fig, ax = plt.subplots(nrows=num_images, ncols=num_plots, figsize=figsize)
+    ax[0][0].set_ylabel("Normal")
+    ax[1][0].set_ylabel("Novel")
     for i, title in enumerate(titles):
-        ax[i][num_images // 2].set_title(title)
+        ax[0][i].set_title(title)
     imshow_kwargs = {
         "cmap": "gray",
         "vmin": 0,
@@ -236,7 +242,7 @@ def plot_reconstruction(images, r_images, saliency, is_novel):
     image_sets = [images, r_images, saliency, saliency**2, r_error]
     for i in range(num_images):
         for j, image_set in enumerate(image_sets):
-            ax[j][i].imshow(image_set[i, 0], **imshow_kwargs)
+            ax[i][j].imshow(image_set[i, 0], **imshow_kwargs)
     # disable tick marks
     for axis in ax.flat:
         axis.set_xticks([])
