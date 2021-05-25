@@ -188,7 +188,7 @@ def plot_top_k(k=10):
             density=True,
             label=labels)
     ax.set_xticks(np.arange(0, k + 1))
-    ax.set_xlabel("Top-%i Agreement" % (k,))
+    ax.set_xlabel("Top %i Agreement" % (k,))
     ax.set_ylabel("Frequency Across Test Set")
     ax.legend()
     plt.savefig("figures/top_%d.pdf" % (k,), bbox_inches='tight', pad_inches=0)
