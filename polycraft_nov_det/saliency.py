@@ -151,6 +151,33 @@ def calc_mse(square_saliency=False):
         np.save(fname, mse)
 
 
+def print_mean_mse():
+    print("Saliency")
+    print("\tNormal: %.5f" % (np.mean(np.load("non_novel_mse.npy"))))
+    print("\tNovel: %.5f" % (np.mean(np.load("novel_mse.npy"))))
+    print("Square Saliency")
+    print("\tNormal: %.5f" % (np.mean(np.load("sqr_non_novel_mse.npy"))))
+    print("\tNovel: %.5f" % (np.mean(np.load("sqr_novel_mse.npy"))))
+    return
+
+
+def print_top_k(k=10):
+    novel_top_k = np.load("novel_top_%i.npy" % (k,))
+    non_novel_top_k = np.load("non_novel_top_%i.npy" % (k,))
+    for is_novel in [False, True]:
+        if not is_novel:
+            data = non_novel_top_k
+            print("Normal")
+        else:
+            data = novel_top_k
+            print("Novel")
+        hist, _ = np.histogram(data,
+                               bins=np.arange(-.5, k + 1),
+                               density=True)
+        print(list(range(k+1)))
+        print(hist)
+
+
 def plot_top_k(k=10):
     novel_top_k = np.load("novel_top_%i.npy" % (k,))
     non_novel_top_k = np.load("non_novel_top_%i.npy" % (k,))
@@ -164,7 +191,7 @@ def plot_top_k(k=10):
     ax.set_xlabel("Top-%i Agreement" % (k,))
     ax.set_ylabel("Frequency Across Test Set")
     ax.legend()
-    plt.show()
+    plt.savefig("figures/top_%d.pdf" % (k,), bbox_inches='tight', pad_inches=0)
 
 
 def plot_mse(square_saliency=False):
