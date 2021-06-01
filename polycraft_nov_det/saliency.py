@@ -41,13 +41,9 @@ def plot_sample_reconstructions():
         batch_loss.backward()
         saliency = data.grad.data
         # select examples by set
-        if not is_novel:
-            index = 2
-        else:
-            index = 2
-        plot_data = torch.cat((plot_data, data[index, None]))
-        plot_r_data = torch.cat((plot_r_data, r_data[index, None]))
-        plot_saliency = torch.cat((plot_saliency, saliency[index, None]))
+        plot_data = torch.cat((plot_data, data[:3]))
+        plot_r_data = torch.cat((plot_r_data, r_data[:3]))
+        plot_saliency = torch.cat((plot_saliency, saliency[:3]))
     plot_reconstruction(plot_data, plot_r_data, plot_saliency)
     plt.savefig("figures/maps.pdf", bbox_inches='tight', pad_inches=0)
 
@@ -253,12 +249,12 @@ def plot_reconstruction(images, r_images, saliency):
     r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
     # plot the image, reconstruction, and saliency
     titles = ["Input", "Reconstruction", "Saliency Map", "Square Saliency", "Reconstruction Error"]
-    num_images = 2
+    num_images = 6
     num_plots = len(titles)
     figsize = (2 * num_plots, 2 * num_images)
     fig, ax = plt.subplots(nrows=num_images, ncols=num_plots, figsize=figsize)
     ax[0][0].set_ylabel("Normal")
-    ax[1][0].set_ylabel("Novel")
+    ax[num_images//2][0].set_ylabel("Novel")
     for i, title in enumerate(titles):
         ax[0][i].set_title(title)
     imshow_kwargs = {
