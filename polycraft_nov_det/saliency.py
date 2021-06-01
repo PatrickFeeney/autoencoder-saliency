@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial.distance import cdist
 from scipy.special import comb
 import torch
 import torch.nn as nn
@@ -94,6 +95,67 @@ def calc_top_k(k=10):
         # save top k results
         fname = "novel_top_%i.npy" % (k,) if is_novel else "non_novel_top_%i.npy" % (k,)
         np.save(fname, top_k_agreement)
+
+
+def calc_top_k_dist(k=10):
+    # define constants
+    batch_size = 5
+    loss_func = nn.MSELoss()
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    # construct datasets
+    _, _, test_non_novel = torch_mnist(batch_size, [0, 1, 2, 3, 4], shuffle=False)
+    _, _, test_novel = torch_mnist(batch_size, [5, 6, 7, 8, 9], shuffle=False)
+    # construct model
+    model_path = "models\\LSA_mnist_no_est_class_0_1_2_3_4\\500_lr_1e-2\\LSA_mnist_no_est_500.pt"
+    model = load_model(model_path)
+    model.to(device)
+    model.eval()
+    # eval model
+    for is_novel in [False, True]:
+        top_k_dist = np.asarray([])
+        # choose data loader
+        if not is_novel:
+            data_loader = test_non_novel
+        else:
+            data_loader = test_novel
+        # generate data
+        for data, target in data_loader:
+            data = data.to(device)
+            data.requires_grad_()
+            r_data, embedding = model(data)
+            batch_loss = loss_func(data, r_data)
+            batch_loss.backward()
+            saliency = data.grad.data
+            # remove grad from tensors for numpy conversion
+            data = data.detach().cpu()
+            r_data = r_data.detach().cpu()
+            saliency = saliency.detach().cpu()
+            # regularize the saliency map
+            saliency = torch.abs(saliency)
+            saliency = saliency / torch.amax(saliency, (2, 3), keepdim=True)
+            # regularized compute squared error
+            r_error = torch.square(r_data - data)
+            r_error = r_error / torch.amax(r_error, (2, 3), keepdim=True)
+            # calc agreement between top k
+            top_s = top_k(saliency, k)
+            top_r = top_k(r_error, k)
+            for i in range(top_s.shape[0]):
+                top_s_pos = np.argwhere(top_s[i, 0] > 0)
+                top_r_pos = np.argwhere(top_r[i, 0] > 0)
+                min_r_to_s = np.min(cdist(top_s_pos, top_r_pos), axis=0)
+                top_k_dist = np.hstack((top_k_dist, np.max(min_r_to_s)))
+        # save top k results
+        fname = "novel_top_%i_dist.npy" % (k,) if is_novel else "non_novel_top_%i_dist.npy" % (k,)
+        np.save(fname, top_k_dist)
+
+
+def print_top_k_dist(k=10):
+    normal = np.load("non_novel_top_%i_dist.npy" % (k,))
+    novel = np.load("novel_top_%i_dist.npy" % (k,))
+    print("K = %i Distance" % (k,))
+    print("\tNormal Mean: %.2f" % (np.mean(normal)))
+    print("\tNovel Mean: %.2f" % (np.mean(novel)))
+    return
 
 
 def calc_mse(square_saliency=False):
