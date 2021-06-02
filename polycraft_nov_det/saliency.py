@@ -142,7 +142,7 @@ def calc_top_k_dist(k=10):
             for i in range(top_s.shape[0]):
                 top_s_pos = np.argwhere(top_s[i, 0] > 0)
                 top_r_pos = np.argwhere(top_r[i, 0] > 0)
-                min_r_to_s = np.min(cdist(top_s_pos, top_r_pos), axis=0)
+                min_r_to_s = np.min(cdist(top_s_pos, top_r_pos), axis=1)
                 top_k_dist = np.hstack((top_k_dist, np.max(min_r_to_s)))
         # save top k results
         fname = "novel_top_%i_dist.npy" % (k,) if is_novel else "non_novel_top_%i_dist.npy" % (k,)
